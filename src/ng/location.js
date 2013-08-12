@@ -83,6 +83,7 @@ function serverBase(url) {
  * @param {string} basePrefix url path prefix
  */
 function LocationHtml5Url(appBase, basePrefix) {
+  this.$$html5 = true;
   basePrefix = basePrefix || '';
   var appBaseNoFile = stripFile(appBase);
   /**
@@ -139,7 +140,8 @@ function LocationHtml5Url(appBase, basePrefix) {
 
 /**
  * LocationHashbangUrl represents url
- * This object is exposed as $location service when html5 history api is disabled or not supported
+ * This object is exposed as $location service when developer doesn't opt into html5 mode.
+ * It also serves as the base class for html5 mode fallback on legacy browsers.
  *
  * @constructor
  * @param {string} appBase application base URL
@@ -148,18 +150,25 @@ function LocationHtml5Url(appBase, basePrefix) {
 function LocationHashbangUrl(appBase, hashPrefix) {
   var appBaseNoFile = stripFile(appBase);
 
+  matchUrl(appBase, this);
+
+
   /**
    * Parse given hashbang url into properties
    * @param {string} url Hashbang url
    * @private
    */
   this.$$parse = function(url) {
-    matchUrl(url, this);
     var withoutBaseUrl = beginsWith(appBase, url) || beginsWith(appBaseNoFile, url);
     if (!isString(withoutBaseUrl)) {
       throw new Error('Invalid url "' + url + '", does not start with "' + appBase +  '".');
     }
-    var withoutHashUrl = withoutBaseUrl.charAt(0) == '#' ? beginsWith(hashPrefix, withoutBaseUrl) : withoutBaseUrl;
+    var withoutHashUrl = withoutBaseUrl.charAt(0) == '#'
+        ? beginsWith(hashPrefix, withoutBaseUrl)
+        : (this.$$html5)
+          ? withoutBaseUrl
+          : '';
+
     if (!isString(withoutHashUrl)) {
       throw new Error('Invalid url "' + url + '", missing hash prefix "' + hashPrefix + '".');
     }
@@ -197,6 +206,7 @@ function LocationHashbangUrl(appBase, hashPrefix) {
  * @param {string} hashPrefix hashbang prefix
  */
 function LocationHashbangInHtml5Url(appBase, hashPrefix) {
+  this.$$html5 = true;
   LocationHashbangUrl.apply(this, arguments);
 
   var appBaseNoFile = stripFile(appBase);
@@ -218,6 +228,12 @@ function LocationHashbangInHtml5Url(appBase, hashPrefix) {
 LocationHashbangInHtml5Url.prototype =
   LocationHashbangUrl.prototype =
   LocationHtml5Url.prototype = {
+
+  /**
+   * Are we in html5 mode?
+   * @private
+   */
+  $$html5: false,
 
   /**
    * Has any change been replacing ?
